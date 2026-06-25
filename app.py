@@ -685,5 +685,13 @@ class SleepyCatApp(ctk.CTk):
             pass
 
 if __name__ == "__main__":
+    ctk.deactivate_automatic_dpi_awareness()
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shcore.SetProcessDpiAwareness(0)
+        except Exception:
+            pass
+            
     app = SleepyCatApp()
     app.mainloop()

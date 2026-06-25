@@ -1,0 +1,21 @@
+# PyInstaller builds
+build/
+dist/
+
+# Executables
+*.exe
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local environment / IDE
+.vs/
+.idea/
+.vscode/
+venv/
+.venv/
+env/
+.env
