@@ -539,7 +539,7 @@ class SleepyCatApp(ctk.CTk):
         subprocess.run(f"shutdown /s /f /t {delta_sec}", shell=True)
 
         self.canvas.itemconfig(self.status_text_id, text=f"Đã hẹn tắt máy lúc: {target.strftime('%H:%M - %d/%m/%Y')}")
-        self.show_notification("Hẹn giờ thành công!", f"Máy tính sẽ tắt vào lúc {target.strftime('%H:%M')}. Chúc bé ngủ ngon! 🐾")
+        self.show_notification("Hẹn giờ thành công!", f"Máy tính sẽ tắt vào lúc {target.strftime('%H:%M')}. Chúc dien ngủ ngon! 🐾")
 
     def cancel_shutdown_timer(self):
         self.is_timer_active = False
@@ -586,14 +586,14 @@ class SleepyCatApp(ctk.CTk):
 
                     if total_seconds <= 300 and not self.warning_shown:
                         self.warning_shown = True
-                        self.trigger_warning_popup()
+                        self.trigger_warning_popup(total_seconds)
 
             time.sleep(1)
 
-    def trigger_warning_popup(self):
-        self.after(0, self.show_cute_warning)
+    def trigger_warning_popup(self, remaining_seconds):
+        self.after(0, lambda: self.show_cute_warning(remaining_seconds))
 
-    def show_cute_warning(self):
+    def show_cute_warning(self, remaining_seconds):
         self.deiconify()
         self.focus_force()
 
@@ -622,9 +622,19 @@ class SleepyCatApp(ctk.CTk):
         y = self.winfo_y() + (self.winfo_height() // 2) - 100
         warning_win.geometry(f"+{x}+{y}")
 
+        # Tính toán thời gian thực tế còn lại
+        minutes, seconds = divmod(remaining_seconds, 60)
+        if minutes > 0:
+            if seconds > 0:
+                time_str = f"{minutes} phút {seconds} giây"
+            else:
+                time_str = f"{minutes} phút"
+        else:
+            time_str = f"{seconds} giây"
+
         lbl = ctk.CTkLabel(
             warning_win,
-            text="Bé ơi! Còn đúng 5 phút nữa là\nmáy tính sẽ tự động đi ngủ đó.\nNhớ lưu lại tài liệu nhé! 🥰",
+            text=f"dien ơi! Còn đúng {time_str} nữa là\nmáy tính sẽ tự động đi ngủ đó.\nNhớ lưu lại tài liệu nhé! 🥰",
             font=("Segoe UI", 14, "bold"),
             text_color=lbl_color,
             pady=20
