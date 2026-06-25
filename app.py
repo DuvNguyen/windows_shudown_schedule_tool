@@ -55,6 +55,19 @@ def create_rounded_card(width, height, radius, color_rgba):
     draw.rounded_rectangle([0, 0, width, height], radius=radius, fill=color_rgba)
     return card
 
+# Hàm lấy tỷ lệ DPI thực tế trên Windows bằng ctypes
+def get_dpi_scale():
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            hdc = ctypes.windll.user32.GetDC(0)
+            dpi = ctypes.windll.gdi32.GetDeviceCaps(hdc, 88) # LOGPIXELSX = 88
+            ctypes.windll.user32.ReleaseDC(0, hdc)
+            return dpi / 96.0
+        except Exception:
+            return 1.0
+    return 1.0
+
 class SleepyCatApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -63,9 +76,7 @@ class SleepyCatApp(ctk.CTk):
         self.geometry("450x640")
         self.resizable(False, False)
         
-        # Cố định tỷ lệ zoom cửa sổ và widget ở mức 1.0 (không tự động co giãn)
-        ctk.set_window_scaling(1.0)
-        ctk.set_widget_scaling(1.0)
+        self.scale_factor = get_dpi_scale()
         
         self.current_theme = "light"
         self.transition_active = False
@@ -114,6 +125,7 @@ class SleepyCatApp(ctk.CTk):
                 pass
 
     def load_images(self):
+        sf = self.scale_factor
         welcome_path = resource_path(os.path.join("assets", "cat_welcome.png"))
         sleep_path = resource_path(os.path.join("assets", "cat_sleep.png"))
         bg_light_path = resource_path(os.path.join("assets", "bg_light.png"))
@@ -124,28 +136,28 @@ class SleepyCatApp(ctk.CTk):
         tiny_sleep_path = resource_path(os.path.join("assets", "cat_tiny_sleep.png"))
 
         # Xử lý ảnh mèo trong suốt
-        self.img_welcome_pil = make_transparent(welcome_path).resize((200, 200))
-        self.img_sleep_pil = make_transparent(sleep_path).resize((200, 200))
+        self.img_welcome_pil = make_transparent(welcome_path).resize((int(200 * sf), int(200 * sf)))
+        self.img_sleep_pil = make_transparent(sleep_path).resize((int(200 * sf), int(200 * sf)))
         
         # Load các ảnh động nhỏ cho màn hình chờ chuyển cảnh
-        self.img_circle_raw = make_transparent(circle_path).resize((100, 100))
-        self.img_tiny_sleep_raw = make_transparent(tiny_sleep_path).resize((100, 100))
+        self.img_circle_raw = make_transparent(circle_path).resize((int(100 * sf), int(100 * sf)))
+        self.img_tiny_sleep_raw = make_transparent(tiny_sleep_path).resize((int(100 * sf), int(100 * sf)))
 
         # Tải nền gốc
         try:
-            bg_light_raw = Image.open(bg_light_path).resize((450, 640))
-            bg_dark_raw = Image.open(bg_dark_path).resize((450, 640))
+            bg_light_raw = Image.open(bg_light_path).resize((int(450 * sf), int(640 * sf)))
+            bg_dark_raw = Image.open(bg_dark_path).resize((int(450 * sf), int(640 * sf)))
         except Exception:
-            bg_light_raw = Image.new("RGB", (450, 640), "#FDF6F0")
-            bg_dark_raw = Image.new("RGB", (450, 640), "#1E1E2F")
+            bg_light_raw = Image.new("RGB", (int(450 * sf), int(640 * sf)), "#FDF6F0")
+            bg_dark_raw = Image.new("RGB", (int(450 * sf), int(640 * sf)), "#1E1E2F")
 
         # Làm mờ hình nền để tạo độ tương phản cực tốt
         self.img_bg_light_pil = blend_with_color(bg_light_raw, "#FDF6F0", alpha=0.12)
         self.img_bg_dark_pil = blend_with_color(bg_dark_raw, "#1E1E2F", alpha=0.45)
 
         # Tạo tấm nền (card) bo góc bán trong suốt
-        self.img_card_light_pil = create_rounded_card(410, 365, radius=25, color_rgba=(253, 246, 240, 235))
-        self.img_card_dark_pil = create_rounded_card(410, 365, radius=25, color_rgba=(25, 25, 38, 220))
+        self.img_card_light_pil = create_rounded_card(int(410 * sf), int(365 * sf), radius=int(25 * sf), color_rgba=(253, 246, 240, 235))
+        self.img_card_dark_pil = create_rounded_card(int(410 * sf), int(365 * sf), radius=int(25 * sf), color_rgba=(25, 25, 38, 220))
 
         import gc
         gc.collect()
@@ -159,8 +171,9 @@ class SleepyCatApp(ctk.CTk):
                 pass
 
     def create_widgets(self):
+        sf = self.scale_factor
         # 1. Tạo Canvas chính
-        self.canvas = tk.Canvas(self, width=450, height=640, highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=int(450 * sf), height=int(640 * sf), highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
 
         # 2. Vẽ hình nền ban đầu lên Canvas
@@ -169,36 +182,36 @@ class SleepyCatApp(ctk.CTk):
 
         # 3. Vẽ tấm nền (Card) bo góc đè lên nền
         self.current_card_tk = ImageTk.PhotoImage(self.img_card_light_pil)
-        self.card_canvas_id = self.canvas.create_image(225, 428, anchor="center", image=self.current_card_tk)
+        self.card_canvas_id = self.canvas.create_image(int(225 * sf), int(428 * sf), anchor="center", image=self.current_card_tk)
 
         # 4. Vẽ hình mèo lên Canvas (Sticker)
         self.current_cat_tk = ImageTk.PhotoImage(self.img_welcome_pil)
-        self.cat_canvas_id = self.canvas.create_image(225, 130, anchor="center", image=self.current_cat_tk)
+        self.cat_canvas_id = self.canvas.create_image(int(225 * sf), int(130 * sf), anchor="center", image=self.current_cat_tk)
 
         # 5. Vẽ tiêu đề lên Canvas (Giới hạn chiều rộng 360px để tự động xuống dòng)
         self.title_text_id = self.canvas.create_text(
-            225, 275, 
+            int(225 * sf), int(275 * sf), 
             text="Công chúa muốn hẹn giờ\ntắt máy lúc mấy giờ?", 
-            font=("Segoe UI", 15, "bold"), 
+            font=("Segoe UI", int(15 * sf), "bold"), 
             fill="#5C4033",
             justify="center",
-            width=360
+            width=int(360 * sf)
         )
 
         # Đồng hồ hiển thị giờ hiện tại ở góc trên bên trái
         self.clock_text_id = self.canvas.create_text(
-            20, 30,
+            int(20 * sf), int(30 * sf),
             text="",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", int(12 * sf), "bold"),
             fill="#5C4033",
             anchor="w"
         )
 
         # 6. Vẽ nhãn chủ đề và Toggle Switch
         self.theme_label_id = self.canvas.create_text(
-            320, 30,
+            int(320 * sf), int(30 * sf),
             text="Chế độ tối",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", int(12 * sf), "bold"),
             fill="#5C4033",
             anchor="e"
         )
@@ -222,7 +235,7 @@ class SleepyCatApp(ctk.CTk):
             button_hover_color="#E29578",
             fg_color="#FFFFFF"
         )
-        self.canvas.create_window(385, 30, window=self.theme_switch, anchor="center")
+        self.canvas.create_window(int(385 * sf), int(30 * sf), window=self.theme_switch, anchor="center")
 
         # 7. Khu vực lựa chọn giờ và phút (Dùng CTkComboBox để cuộn chuột và gõ phím được)
         hours = [f"{i:02d}" for i in range(24)]
@@ -237,13 +250,13 @@ class SleepyCatApp(ctk.CTk):
             dropdown_font=("Segoe UI", 14, "bold"),
             corner_radius=10
         )
-        self.canvas.create_window(175, 330, window=self.hour_menu, anchor="center")
+        self.canvas.create_window(int(175 * sf), int(330 * sf), window=self.hour_menu, anchor="center")
 
         # Dấu hai chấm
         self.lbl_colon_id = self.canvas.create_text(
-            225, 330, 
+            int(225 * sf), int(330 * sf), 
             text=":", 
-            font=("Segoe UI", 22, "bold"),
+            font=("Segoe UI", int(22 * sf), "bold"),
             fill="#5C4033"
         )
 
@@ -259,7 +272,7 @@ class SleepyCatApp(ctk.CTk):
             dropdown_font=("Segoe UI", 14, "bold"),
             corner_radius=10
         )
-        self.canvas.create_window(275, 330, window=self.minute_menu, anchor="center")
+        self.canvas.create_window(int(275 * sf), int(330 * sf), window=self.minute_menu, anchor="center")
 
         # 8. Presets Frame
         presets_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -279,7 +292,7 @@ class SleepyCatApp(ctk.CTk):
         self.btn_p120 = ctk.CTkButton(presets_frame, text="+2 tiếng", command=lambda: self.add_preset_minutes(120), **preset_btn_style)
         self.btn_p120.grid(row=0, column=2, padx=5)
 
-        self.canvas.create_window(225, 385, window=presets_frame, anchor="center")
+        self.canvas.create_window(int(225 * sf), int(385 * sf), window=presets_frame, anchor="center")
 
         # 9. Các nút hành động chính
         actions_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -308,20 +321,20 @@ class SleepyCatApp(ctk.CTk):
         )
         self.btn_cancel.grid(row=0, column=1, padx=10)
 
-        self.canvas.create_window(225, 455, window=actions_frame, anchor="center")
+        self.canvas.create_window(int(225 * sf), int(455 * sf), window=actions_frame, anchor="center")
 
         # 10. Trạng thái và Đếm ngược vẽ trực tiếp lên Canvas
         self.status_text_id = self.canvas.create_text(
-            225, 520,
+            int(225 * sf), int(520 * sf),
             text="Trạng thái: Chưa có hẹn giờ.",
-            font=("Segoe UI", 12, "italic"),
+            font=("Segoe UI", int(12 * sf), "italic"),
             fill="#5C4033"
         )
 
         self.countdown_text_id = self.canvas.create_text(
-            225, 560,
+            int(225 * sf), int(560 * sf),
             text="",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", int(16 * sf), "bold"),
             fill="#FF4500"
         )
 
@@ -427,9 +440,10 @@ class SleepyCatApp(ctk.CTk):
 
         bg_color = "#FDF6F0" if target_mode == "dark" else "#1E1E2F"
         is_spinning = (target_mode == "dark")
+        sf = self.scale_factor
 
         # Sử dụng Canvas thay vì Frame để vẽ trăng sao
-        self.overlay_canvas = tk.Canvas(self, width=450, height=640, bg=bg_color, highlightthickness=0)
+        self.overlay_canvas = tk.Canvas(self, width=int(450 * sf), height=int(640 * sf), bg=bg_color, highlightthickness=0)
         self.overlay_canvas.place(x=0, y=0, relwidth=1, relheight=1)
 
         # Vẽ trang trí trăng sao cho màn hình chờ màu tối
@@ -437,14 +451,14 @@ class SleepyCatApp(ctk.CTk):
             # 1. Vẽ các ngôi sao nhỏ lung linh (vòng tròn vàng nhạt)
             stars = [(60, 80), (120, 150), (80, 250), (350, 120), (380, 280), (100, 480), (360, 500)]
             for sx, sy in stars:
-                self.overlay_canvas.create_oval(sx, sy, sx+4, sy+4, fill="#FFE5B4", outline="")
+                self.overlay_canvas.create_oval(sx*sf, sy*sf, (sx+4)*sf, (sy+4)*sf, fill="#FFE5B4", outline="")
             
             # 2. Vẽ mặt trăng khuyết màu vàng cam dễ thương ở góc phải
-            self.overlay_canvas.create_oval(300, 80, 350, 130, fill="#FFE5B4", outline="")
-            self.overlay_canvas.create_oval(315, 80, 365, 130, fill="#1E1E2F", outline="")
+            self.overlay_canvas.create_oval(300*sf, 80*sf, 350*sf, 130*sf, fill="#FFE5B4", outline="")
+            self.overlay_canvas.create_oval(315*sf, 80*sf, 365*sf, 130*sf, fill=bg_color, outline="")
 
         # Nhãn ảnh động ở tâm Canvas
-        self.anim_image_id = self.overlay_canvas.create_image(225, 320, anchor="center")
+        self.anim_image_id = self.overlay_canvas.create_image(int(225 * sf), int(320 * sf), anchor="center")
 
         start_time = time.time()
         duration = 0.5
